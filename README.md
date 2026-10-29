@@ -8,6 +8,7 @@ A minimal VLC-like video streaming client/server written in Python, built on **R
 ![Tkinter](https://img.shields.io/badge/GUI-Tkinter-informational)
 ![Protocols](https://img.shields.io/badge/Protocols-RTSP%20%7C%20RTP%20%7C%20UDP%20%7C%20TCP-orange)
 ![Status](https://img.shields.io/badge/Status-Academic%20project-lightgrey)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 <img src="docs/demo.gif" alt="Demo: server and client streaming movie.mjpeg" width="720">
 
@@ -80,20 +81,20 @@ pip install -r requirements.txt
 Terminal 1, start the server:
 
 ```bash
-cd "Video streaming application"
+cd src
 python3 Server.py 1025
 ```
 
 Terminal 2, start the client:
 
 ```bash
-cd "Video streaming application"
+cd src
 python3 ClientLauncher.py 127.0.0.1 1025 5008 movie.mjpeg
 ```
 
 Then click **Setup → Play**. Use **Pause** / **Play** to control playback and **Teardown** to close the session.
 
-On Linux/macOS, `./test.sh` starts both in one go.
+On Linux/macOS, `./src/test.sh` starts both in one go.
 
 ### Usage
 
@@ -169,7 +170,7 @@ The client counts sequence gaps and prints the **RTP packet loss rate** on teard
 
 ```text
 .
-├── Video streaming application/
+├── src/
 │   ├── Server.py           # RTSP listener, spawns one ServerWorker per client
 │   ├── ServerWorker.py     # RTSP request handling + RTP sender thread
 │   ├── Client.py           # Tkinter GUI, RTSP requests, RTP receiver
@@ -194,4 +195,8 @@ The client counts sequence gaps and prints the **RTP packet loss rate** on teard
 
 ## Author
 
-**[Alexandre Rousseau](https://github.com/vuong203)**, Computer Networks assignment.
+**[Alexandre Vuong](https://github.com/vuong203)**, Computer Networks assignment.
+
+## License
+
+Released under the [MIT License](LICENSE).
