@@ -12,7 +12,7 @@ A minimal VLC-like video streaming client/server written in Python, built on **R
 
 <img src="docs/demo.gif" alt="Demo: server and client streaming movie.mjpeg" width="720">
 
-[Full demo video](Demo%20Streaming%20Application.mp4) · [Project report (PDF)](Report/1952001_AlexandreRousseau_Assignement1_Report.pdf)
+[Full demo video](https://github.com/vuong203/Video-Streaming-Application/releases/download/v1.0/Demo.Streaming.Application.mp4) · [Project report (PDF)](Report/1952001_AlexandreRousseau_Assignement1_Report.pdf)
 
 </div>
 
@@ -71,8 +71,8 @@ stateDiagram-v2
 - Pillow
 
 ```bash
-git clone https://github.com/vuong203/Video-Streaming-Application-.git
-cd Video-Streaming-Application-
+git clone https://github.com/vuong203/Video-Streaming-Application.git
+cd Video-Streaming-Application
 pip install -r requirements.txt
 ```
 
@@ -182,7 +182,8 @@ The client counts sequence gaps and prints the **RTP packet loss rate** on teard
 │   └── test.sh             # Run server + client locally
 ├── Report/                 # Assignment report (PDF)
 ├── docs/demo.gif           # README preview
-└── Demo Streaming Application.mp4
+├── LICENSE
+└── requirements.txt
 ```
 
 ## Known limitations
