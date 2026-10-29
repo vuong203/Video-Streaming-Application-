@@ -10,6 +10,7 @@ class Server:
 			SERVER_PORT = int(sys.argv[1])
 		except:
 			print ("[Usage: Server.py Server_port]\n")
+			sys.exit(1)
 		rtspSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		rtspSocket.bind(('', SERVER_PORT))
 		print ("RTSP Listing incoming request...")

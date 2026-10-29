@@ -35,10 +35,16 @@ class ServerWorker:
 		"""Receive RTSP request from the client."""
 		connSocket = self.clientInfo['rtspSocket'][0]
 		while True:
-			data = connSocket.recv(256)  ###
-			if data:
-				print ('-'*60 + "\nData received:\n" + '-'*60)
-				self.processRtspRequest(data)
+			try:
+				data = connSocket.recv(256)
+			except OSError:
+				data = b''
+			if not data: # Client closed the connection
+				self.stopRtp()
+				connSocket.close()
+				break
+			print ('-'*60 + "\nData received:\n" + '-'*60)
+			self.processRtspRequest(data)
 
 	def processRtspRequest(self, dt):
 		#print(type(dt), "%r" % dt)
@@ -63,7 +69,9 @@ class ServerWorker:
 					self.state = self.READY
 
 				except IOError:
-					self.replyRtsp(self.FILE_NOT_FOUND_404, seq[1])
+					self.clientInfo['session'] = 0
+					self.replyRtsp(self.FILE_NOT_FOUND_404, seq[0])
+					return
 
 				# Generate a randomized RTSP session ID
 				self.clientInfo['session'] = randint(100000, 999999)
@@ -82,8 +90,9 @@ class ServerWorker:
 				print( '-'*60 + "\nPLAY Request Received\n" + '-'*60)
 				self.state = self.PLAYING
 
-				# Create a new socket for RTP/UDP
-				self.clientInfo["rtpSocket"] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+				# Create a new socket for RTP/UDP (reused when resuming after PAUSE)
+				if 'rtpSocket' not in self.clientInfo:
+					self.clientInfo["rtpSocket"] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 				self.replyRtsp(self.OK_200, seq[0])
 				print ('-'*60 + "\nSequence Number ("+ seq[0] + ")\nReplied to client\n" + '-'*60)
@@ -92,10 +101,6 @@ class ServerWorker:
 				self.clientInfo['event'] = threading.Event()
 				self.clientInfo['worker']= threading.Thread(target=self.sendRtp)
 				self.clientInfo['worker'].start()
-		# Process RESUME request
-			elif self.state == self.PAUSE:
-				print ('-'*60 + "\nRESUME Request Received\n" + '-'*60)
-				self.state = self.PLAYING
 
 		# Process PAUSE request
 		elif requestType == self.PAUSE:
@@ -111,12 +116,19 @@ class ServerWorker:
 		elif requestType == self.TEARDOWN:
 			print ('-'*60 + "\nTEARDOWN Request Received\n" + '-'*60)
 
-			self.clientInfo['event'].set()
-
 			self.replyRtsp(self.OK_200, seq[0])
+			self.state = self.INIT
 
-			# Close the RTP socket
+			# Stop sending and close the RTP socket
+			self.stopRtp()
+
+	def stopRtp(self):
+		"""Stop the RTP sender thread and close the RTP socket."""
+		if 'event' in self.clientInfo:
+			self.clientInfo['event'].set()
+		if 'rtpSocket' in self.clientInfo:
 			self.clientInfo['rtpSocket'].close()
+			del self.clientInfo['rtpSocket']
 
 	def sendRtp(self):
 		"""Send RTP packets over UDP."""
@@ -131,11 +143,13 @@ class ServerWorker:
 			jit = jit + 0.020
 
 			# Stop sending if request is PAUSE or TEARDOWN
-			if self.clientInfo['event'].isSet():
+			if self.clientInfo['event'].is_set():
 				break
 
 			data = self.clientInfo['videoStream'].nextFrame()
-			#print '-'*60 + "\ndata from nextFrame():\n" + data + "\n"
+			if not data: # End of video
+				print ("End of video stream")
+				break
 			if data:
 				frameNumber = self.clientInfo['videoStream'].frameNbr()
 				try:
@@ -188,5 +202,8 @@ class ServerWorker:
 		# Error messages
 		elif code == self.FILE_NOT_FOUND_404:
 			print ("404 NOT FOUND")
+			reply = 'RTSP/1.0 404 Not Found\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
+			connSocket = self.clientInfo['rtspSocket'][0]
+			connSocket.send(reply.encode('utf-8'))
 		elif code == self.CON_ERR_500:
 			print ("500 CONNECTION ERROR")

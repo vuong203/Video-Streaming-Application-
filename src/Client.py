@@ -34,6 +34,7 @@ class Client:
 		self.sessionId = 0
 		self.requestSent = -1
 		self.teardownAcked = 0
+		self.replyListenerStarted = False
 		self.connectToServer()
 		self.frameNbr = 0
 		self.rtpSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
@@ -78,8 +79,10 @@ class Client:
 		self.sendRtspRequest(self.TEARDOWN)
 		#self.handler()
 		self.master.destroy() # Close the gui window
-		os.remove(CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT) # Delete the cache image from video
-		rate = float(self.counter/self.frameNbr)
+		cachename = CACHE_FILE_NAME + str(self.sessionId) + CACHE_FILE_EXT
+		if os.path.exists(cachename):
+			os.remove(cachename) # Delete the cache image from video
+		rate = float(self.counter/self.frameNbr) if self.frameNbr else 0.0
 		print( '-'*60 + "\nRTP Packet Loss Rate :" + str(rate) +"\n" + '-'*60 )
 		sys.exit(0)
 
@@ -109,8 +112,8 @@ class Client:
 					print ("||Received Rtp Packet #" + str(rtpPacket.seqNum()) + "|| ")
 
 					try:
-						if self.frameNbr + 1 != rtpPacket.seqNum():
-							self.counter += 1
+						if rtpPacket.seqNum() > self.frameNbr + 1:
+							self.counter += rtpPacket.seqNum() - self.frameNbr - 1
 							print ('!'*60 + "\nPACKET LOSS\n" + '!'*60)
 						currFrameNbr = rtpPacket.seqNum()
 						#version = rtpPacket.version()
@@ -127,7 +130,7 @@ class Client:
 			except:
 				# Stop listening upon requesting PAUSE or TEARDOWN
 				print ("Didn`t receive data!")
-				if self.playEvent.isSet():
+				if self.playEvent.is_set():
 					break
 
 				# Upon receiving ACK for TEARDOWN request,
@@ -165,6 +168,7 @@ class Client:
 			print ('-'*60)
 			traceback.print_exc(file=sys.stdout)
 			print ('-'*60)
+			return
 
 		self.label.configure(image = photo, height=288)
 		self.label.image = photo
@@ -185,7 +189,9 @@ class Client:
 
 		# Setup request
 		if requestCode == self.SETUP and self.state == self.INIT:
-			threading.Thread(target=self.recvRtspReply).start()
+			if not self.replyListenerStarted: # Only one listener, even if SETUP is retried after an error
+				self.replyListenerStarted = True
+				threading.Thread(target=self.recvRtspReply).start()
 			# Update RTSP sequence number.
 			# ...
 			self.rtspSeq = 1
@@ -277,6 +283,11 @@ class Client:
 
 		# Process only if the server reply's sequence number is the same as the request's
 		if seqNum == self.rtspSeq:
+			status = int(lines[0].split(' ')[1])
+			if status != 200:
+				reason = ' '.join(lines[0].split(' ')[1:])
+				self.master.after(0, lambda: tkMessageBox.showwarning('Request Failed', 'Server replied: ' + reason))
+				return
 			session = int(lines[2].split(' ')[1])
 			# New RTSP session ID
 			if self.sessionId == 0:
@@ -333,7 +344,7 @@ class Client:
 
 		try:
 			#self.rtpSocket.connect(self.serverAddr,self.rtpPort)
-			self.rtpSocket.bind((self.serverAddr,self.rtpPort))
+			self.rtpSocket.bind(('', self.rtpPort))
 			#self.rtpSocket.listen(5)
 			print ("Bind RtpPort Success")
 
@@ -343,13 +354,16 @@ class Client:
 
 	def handler(self):
 		"""Handler on explicitly closing the GUI window."""
+		wasPlaying = self.state == self.PLAYING
 		self.pauseMovie()
 		if tkMessageBox.askokcancel("Quit?", "Are you sure you want to quit?"):
 			self.exitClient()
-		else: # When the user presses cancel, resume playing.
-			#self.playMovie()
-			print ("Playing Movie")
-			threading.Thread(target=self.listenRtp).start()
-			#self.playEvent = threading.Event()
-			#self.playEvent.clear()
-			self.sendRtspRequest(self.PLAY)
+		elif wasPlaying: # When the user presses cancel, resume playing.
+			self.resumeWhenReady()
+
+	def resumeWhenReady(self):
+		"""Resume playback once the PAUSE reply has been received."""
+		if self.state == self.READY:
+			self.playMovie()
+		elif self.state == self.PLAYING:
+			self.master.after(50, self.resumeWhenReady)
