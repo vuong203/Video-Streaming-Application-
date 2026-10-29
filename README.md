@@ -144,7 +144,7 @@ The sequence number equals the frame number, which lets the client detect lost a
 
 | Command | Client action | Server action |
 |---|---|---|
-| `SETUP` | Sends file name, CSeq and RTP port; opens UDP socket (0.5 s timeout) | Opens the video, generates a random session ID |
+| `SETUP` | Sends file name, CSeq and RTP port; opens UDP socket (0.5 s timeout) | Opens the video, generates a random session ID, or replies `404 Not Found` |
 | `PLAY` | Starts the RTP listener thread | Starts the RTP sender thread |
 | `PAUSE` | Stops the listener thread | Stops sending packets |
 | `TEARDOWN` | Closes sockets, prints packet loss rate | Stops sending, closes the RTP socket |
@@ -188,9 +188,8 @@ The client counts sequence gaps and prints the **RTP packet loss rate** on teard
 ## Known limitations
 
 - RTSP messages use a simplified text format, not fully RFC 2326 compliant.
-- The client binds its RTP socket to the server address, so it is designed to run on `localhost`.
 - The RTP timestamp uses wall-clock seconds instead of a 90 kHz media clock.
-- A `404 Not Found` is logged by the server but not sent back to the client.
+- Tkinter widgets are updated from the RTP listener thread.
 - No RTCP, no adaptive bitrate, no encryption (plain RTSP/RTP).
 
 ## Author

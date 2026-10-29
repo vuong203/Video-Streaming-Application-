@@ -16,6 +16,8 @@ class VideoStream:
 
 		data = self.file.read(5) # Get the framelength from the first 5 bytes
 		#data_ints = struct.unpack('<' + 'B'*len(data),data)
+		if len(data) < 5:
+			return None # End of file
 		data = bytearray(data)
 
 		data_int = (data[0] - 48) * 10000 + (data[1] - 48) * 1000 + (data[2] - 48) * 100 + (data[3] - 48) * 10 + (data[4] - 48)# = #int(data.encode('hex'),16)

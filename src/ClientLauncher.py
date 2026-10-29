@@ -11,6 +11,7 @@ if __name__ == "__main__":
 		fileName = sys.argv[4]
 	except:
 		print ("[Usage: ClientLauncher.py Server_name Server_port RTP_port Video_file]\n")
+		sys.exit(1)
 
 	root = Tk()
 
